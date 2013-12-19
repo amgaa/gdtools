@@ -79,9 +79,9 @@ def show_file(f):
         ftype = "Dir"
     else:
         ftype = "File"
-    print "{:5s} | {:30s}|{:16s}|{:36s}".format(ftype,
-                                                f["title"][:30].encode('utf8'),
-                                                f["ownerNames"][0][:16].encode('utf8'),
+    print "{:5s} | {:55s}|{:25s}|{:36s}".format(ftype,
+                                                f["title"][:55].encode('utf8'),
+                                                f["ownerNames"][0][:25].encode('utf8'),
                                                 f["id"] )
 
 def is_folder(f):
@@ -106,7 +106,8 @@ def print_permission(service, file_id, permission_id):
         if permission.has_key("name"): print 'Name: %s' % permission['name']
         print 'Role: %s' % permission['role']
         print 'Type: %s' % permission['type']
-        print 'Perm_id: %s' % str(permission)#['id']
+#        print 'Permission_id: %s' % str(permission)#['id']
+        print 'Permission_id: %s' % permission['id']
         for additional_role in permission.get('additionalRole', []):
             print 'Additional role: %s' % additional_role
     except errors.HttpError, error:
@@ -441,56 +442,56 @@ def show_help(args):
 def show_commands():
     print "show_all"
     print "           : Lists all files and folders in your Google Drive"
-    print "\n"
+    print ""
 
     print "show_files"
     print "           : Lists all files in your Google Drive"
-    print "\n"
+    print ""
 
     print "show_folder"
     print "           : Lists all folders in your Google Drive"
-    print "\n"
+    print ""
 
     print "ls_folder \"<folder name>\""
     print "           : Lists files and folders in your folder. Takes folder name as"
     print "           : argument. If two or more folder w/ same name exists, returns error"
-    print "\n"
+    print ""
 
     print "ls_folder_by_id <folder ID>"
     print "           : Lists files and folders in folder of given ID"
-    print "\n"
+    print ""
 
     print "show_ids \"<file/folder name>\""
     print "           : Shows the ID of given file/folder name. If mutiple file exists"
     print "           : returns multiple IDs"
-    print "\n"
+    print ""
 
     print "show_perms \"<file/folder name>\""
     print "           : Shows permission status of file/folder. Takes file/folder name"
     print "           : If two or more file/folder w/ same name exists, returns error"
-    print "\n"
+    print ""
 
     print "show_perms_by_id <file/folder ID>"
     print "           : Shows permission status of file/folder. Takes ID as argument."
-    print "\n"
+    print ""
 
     print "give_perm \"<file/folder name>\" <email> <user|group|anyone> <owner|writer|reader>"
     print "           : Gives given user a permission to file/folder. Takes file/folder name as argument"
-    print "\n"
+    print ""
 
     print "give_perm_by_id <file/folder ID> <email> <user|group|anyone> <owner|writer|reader>"
     print "           : Gives given user a permission to file/folder. Takes file/folder ID as argument."
-    print "\n"
+    print ""
 
     print "remove_perm \"<file/folder name>\" \"<user name>\""
     print "           : Removes given user's permission from file. Takes file/folder name as argument."
-    print "\n"
+    print ""
 
     print "remove_perm_by_id <file/folder ID> <permission ID>"
     print "           : Removes given user's permission from file. Takes file/folder ID and permission ID as argument."
-    print "\n"
+    print ""
 
     print "help       : Shows help"
-    print "\n"
+    print ""
 
     print "exit       : Exits from the program"
