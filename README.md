@@ -1,4 +1,5 @@
 gdtools
 =======
 
-Tools to easily manipulate files on Goodle Drive
+Tools to easily manipulate file/folder permissions on Goodle Drive. 
+
