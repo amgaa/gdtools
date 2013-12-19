@@ -42,15 +42,54 @@ def retrieve_all_files(service):
     return result
 
 # Only title, (first for now)owner, (in TODO)permissions, modified 
-def show_files(files):
+def show_all(files):
+    """ Prints out file/folder name, owner. and IDs    
+    """
     print "Title       Owner       id    "
     for f in files:
         show_file(f)
 
+def show_files(service):
+    """ Prints out only files
+    """
+    try:
+        files = retrieve_all_files(service)
+        print "Title       Owner       id    "
+        for f in files:
+            if not f["mimeType"] == "application/vnd.google-apps.folder":
+                show_file(f)
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
+
+def show_folders(service):
+    """ Prints out only folders
+    """
+    try:
+        files = retrieve_all_files(service)
+        print "Title       Owner       id    "
+        for f in files:
+            if f["mimeType"] == "application/vnd.google-apps.folder":
+                show_file(f)
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
+
+
 def show_file(f):
-    print "{:30s}|{:16s}|{:36s}".format(f["title"][:30].encode('utf8'), \
-                                              f["ownerNames"][0][:16].encode('utf8'),\
-                                              f["id"] )
+    if f["mimeType"] == "application/vnd.google-apps.folder":
+        ftype = "Dir"
+    else:
+        ftype = "File"
+    print "{:5s} | {:30s}|{:16s}|{:36s}".format(ftype,
+                                                f["title"][:30].encode('utf8'),
+                                                f["ownerNames"][0][:16].encode('utf8'),
+                                                f["id"] )
+
+def is_folder(f):
+    """ Checks if a file is folder
+    """
+    if f["mimeType"] == "application/vnd.google-apps.folder":
+        return True
+    return False
 
 def print_permission(service, file_id, permission_id):
     """Print information about the specified permission.
@@ -226,6 +265,49 @@ def remove_permission(service, file_id, permission_id):
     except errors.HttpError, error:
         print 'An error occurred: %s' % error
     
+def remove_permission_beta(service, filename, user_name):
+    """Remove a user's permission from a file with unique name.
+
+    Args:
+    service: Drive API service instance.
+    filename: Name of the file to remove the permission for.
+    User name: Name of the user to remove from permissions.
+    """
+    try:
+        file_ids = list()
+        perm_ids = list()
+        
+        # Look for file ID
+        file_ids = get_file_ids_for_filename(service, filename)
+        if  len(file_ids) > 1:
+            print "There are multiple files named: " + filename
+            print "Cannot change permission. Please use unique filename."
+            return
+        if len(file_ids) == 0:
+            print "We could not find file named: " + filename
+            print "Please check your filename"
+            return
+
+        # Look for permission ID
+        permissions = service.permissions().list(fileId=file_ids[0]).execute()
+        permissions = permissions.get('items', [])
+        for perm in permissions:
+            if perm.has_key("name"):
+                if perm["name"] == user_name:
+                    perm_ids.append(perm["id"])
+        
+        if len(perm_ids) > 1:
+            print "There are mutiple users named: " + user_name
+            print "Cannot change permission. Please use \" remove_perm_by_ids\" instead"
+            return
+        if len(perm_ids) == 0:
+            print "There is no user named " + user_name + " has permission in this file."
+            print "Please check your file and user name. "
+            return
+        return remove_permission(service, file_ids[0], perm_ids[0])
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
+    
 
 def give_perm(service, filename, value, perm_type, role):
     """Insert a new permission.
@@ -255,18 +337,160 @@ def give_perm(service, filename, value, perm_type, role):
         print 'An error occured: %s' % error
     return None
 
+#def give_folder_perm_by_id(service, folder_id, value, perm_type, role):
+#def give_folder_perm(service, folder_name, value, perm_type, role):
+
+
+def print_files_in_folder(service, folder_id):
+    """Print files belonging to a folder.
+
+    Args:
+    service: Drive API service instance.
+    folder_id: ID of the folder to print files from.
+    """
+    page_token = None
+    while True:
+        try:
+            param = {}
+            if page_token:
+                param['pageToken'] = page_token
+            children = service.children().list(
+                folderId=folder_id, **param).execute()
+
+            for child in children.get('items', []):
+#                print 'File Id: %s' % child['id']
+                show_file(service.files().get(fileId=child['id']).execute())
+
+            page_token = children.get('nextPageToken')
+            if not page_token:
+                break
+        except errors.HttpError, error:
+            print 'An error occurred: %s' % error
+            break
+
+def print_files_in_folder_by_name(service, folder_name):
+    """Print files belonging to a folder.
+
+    Args:
+    service: Drive API service instance.
+    folder_name: name of the folder to print files from.
+    """
+
+    try:
+        folder_ids = list()
+        folder_ids = get_file_ids_for_filename(service, folder_name)
+        if  len(folder_ids) > 1:
+            print "There are multiple files and folders named: " + folder_name
+            print "Cannot show lists. Please use unique folder name."
+            return
+        if len(folder_ids) == 0:
+            print "We could not find folder named: " + folder_name
+            print "Please check your folder name"
+            return
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
+        
+    page_token = None
+    while True:
+        try:
+            param = {}
+            if page_token:
+                param['pageToken'] = page_token
+            children = service.children().list(
+                folderId=folder_ids[0], **param).execute()
+
+            for child in children.get('items', []):
+#                print 'File Id: %s' % child['id']
+#                print str(child)
+                show_file( service.files().get(fileId=child['id']).execute())
+
+            page_token = children.get('nextPageToken')
+            if not page_token:
+                break
+
+        except errors.HttpError, error:
+            print 'An error occurred: %s' % error
+            break
+
+
+
+
+def print_file(service, file_id):
+    """Print a file's metadata.
+
+    Args:
+    service: Drive API service instance.
+    file_id: ID of the file to print metadata for.
+    """
+    try:
+        file = service.files().get(fileId=file_id).execute()
+
+        print 'Title: %s' % file['title']
+        print 'MIME type: %s' % file['mimeType']
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
+
+
+
+
 
 def show_help(args):
     print "Usage: {}"
     print "No argument is required yet"
 
 def show_commands():
-    print "get_info"
-#    print "show_info_by_id <file_id>"
-    print "show_perms_by_id <file_id>"
-    print "show_perms <file_name>"
-    print "give_perm_by_id <file_id> <email> <user|group|anyone> <owner|writer|reader>"
-    print "give_perm <filename> <email> <user|group|anyone> <owner|writer|reader>"
-    print "show_ids <filename>"
-    print "help"
-    print "exit"
+    print "show_all"
+    print "           : Lists all files and folders in your Google Drive"
+    print "\n"
+
+    print "show_files"
+    print "           : Lists all files in your Google Drive"
+    print "\n"
+
+    print "show_folder"
+    print "           : Lists all folders in your Google Drive"
+    print "\n"
+
+    print "ls_folder \"<folder name>\""
+    print "           : Lists files and folders in your folder. Takes folder name as"
+    print "           : argument. If two or more folder w/ same name exists, returns error"
+    print "\n"
+
+    print "ls_folder_by_id <folder ID>"
+    print "           : Lists files and folders in folder of given ID"
+    print "\n"
+
+    print "show_ids \"<file/folder name>\""
+    print "           : Shows the ID of given file/folder name. If mutiple file exists"
+    print "           : returns multiple IDs"
+    print "\n"
+
+    print "show_perms \"<file/folder name>\""
+    print "           : Shows permission status of file/folder. Takes file/folder name"
+    print "           : If two or more file/folder w/ same name exists, returns error"
+    print "\n"
+
+    print "show_perms_by_id <file/folder ID>"
+    print "           : Shows permission status of file/folder. Takes ID as argument."
+    print "\n"
+
+    print "give_perm \"<file/folder name>\" <email> <user|group|anyone> <owner|writer|reader>"
+    print "           : Gives given user a permission to file/folder. Takes file/folder name as argument"
+    print "\n"
+
+    print "give_perm_by_id <file/folder ID> <email> <user|group|anyone> <owner|writer|reader>"
+    print "           : Gives given user a permission to file/folder. Takes file/folder ID as argument."
+    print "\n"
+
+    print "remove_perm \"<file/folder name>\" \"<user name>\""
+    print "           : Removes given user's permission from file. Takes file/folder name as argument."
+    print "\n"
+
+    print "remove_perm_by_id <file/folder ID> <permission ID>"
+    print "           : Removes given user's permission from file. Takes file/folder ID and permission ID as argument."
+    print "\n"
+
+    print "help       : Shows help"
+    print "\n"
+
+    print "exit       : Exits from the program"

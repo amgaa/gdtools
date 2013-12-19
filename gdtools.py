@@ -4,6 +4,7 @@ import httplib2
 import pprint
 import sys
 import os
+import re
 import time
 from apiclient import sample_tools
 from apiclient import errors
@@ -54,14 +55,12 @@ def main(args):
             continue
         if input_args[0] == 'help':
             gdfuncs.show_commands()
-        if input_args[0] == 'get_info':
-            gdfuncs.show_files( gdfuncs.retrieve_all_files(drive_service) )
+
+
+        if input_args[0] == 'show_all':
+            gdfuncs.show_all( gdfuncs.retrieve_all_files(drive_service) )
             t_start = time.time()
 
-#        if input_args[0] == 'show_info_by_id':
-#            if len(input_args) == 2:
-#                gdfuncs.show_by_id(drive_service, input_args[1])
-#                t_start = time.time()
 
         if input_args[0] == 'show_perms_by_id':
             if len(input_args) == 2:
@@ -70,14 +69,16 @@ def main(args):
             else:
                 print "Wrong argument: " + ' '.join(args)
 
+
         if input_args[0] == 'show_perms':
             if len(input_args) == 1:
                 print "Wrong arguments:"
-                print "example: perms <file_name>"
+                print "example: perms \"<file_name>\""
             else:
-                filename = ' '.join(input_args[1:])
+                filename = ' '.join(input_args[1:]).strip("\"")
                 gdfuncs.show_perms(drive_service, filename)
                 t_start = time.time()
+
                 
         if input_args[0] == 'give_perm_by_id':
             if len(input_args) == 5:
@@ -96,23 +97,39 @@ def main(args):
 
 
         if input_args[0] == 'give_perm':
-            if len(input_args) == 5:
-                filename = ' '.join(input_args[1:])
+            if len(input_args) >= 5:
+                filename = ' '.join(input_args[1:-3]).strip("\"")
                 gdfuncs.give_perm(drive_service, 
-                                  input_args[1], 
-                                  input_args[2], 
-                                  input_args[3], 
-                                  input_args[4])
+                                  filename, 
+                                  input_args[-3], 
+                                  input_args[-2], 
+                                  input_args[-1])
                 t_start = time.time()
             else:
                 print "Wrong arguments:"
-                print "example: give_perm <file_name> <value> <type> <role>"
+                print "example: give_perm \"<file_name>\" <value> <type> <role>"
                 print "value: email address of user or group. If the type is 'anyone', please write 'None'"
                 print "type: one of 'user', 'group', or 'anyone'"
                 print "role: one of 'owner', 'writer', or 'reader' "                
-        
 
-        if input_args[0] == 'remove_perm_by_ids':
+
+        if input_args[0] == 'show_files':
+            if not len(input_args) == 1:
+                print "Wrong arguments: No argument needed"
+            else:
+                gdfuncs.show_files(drive_service)
+                t_start = time.time()
+
+        
+        if input_args[0] == 'show_folders':
+            if not len(input_args) == 1:
+                print "Wrong arguments: No argument needed"
+            else:
+                gdfuncs.show_folders(drive_service)
+                t_start = time.time()
+
+
+        if input_args[0] == 'remove_perm_by_id':
             if not len(input_args) == 3:
                 print "Wrong arguments:"
                 print "example: remove_perm_by_ids <file_id> <permission_id>"
@@ -121,17 +138,47 @@ def main(args):
                                           input_args[1], 
                                           input_args[2])
                 t_start = time.time()
+        
+        if input_args[0] == 'remove_perm':
+            args = ' '.join(input_args[1:])
+            names = re.findall(r'\"(.+?)\"',args)
+            if not len(names) == 2:
+#            if not len(input_args) == 3:
+                print "Wrong arguments:" + args
+                print "example: remove_perm \"<filename>\" \"<user_name>\""
+            else:
+                gdfuncs.remove_permission_beta(drive_service, 
+                                          names[0], 
+                                          names[1])
+                t_start = time.time()
                 
-
+        
         if input_args[0] == 'show_ids':
             if len(input_args) == 1:
                 print "Wrong arguments:"
-                print "example: show_ids <file_name>"
+                print "example: show_ids \"<file_name>\""
             else:
                 filename = ' '.join(input_args[1:])
                 gdfuncs.print_file_ids_for_filename(drive_service, filename)
                 t_start = time.time()
                
+        if input_args[0] == 'ls_folder_by_id':
+            if not len(input_args) == 2:
+                print "Wrong arguments:"
+                print "example: ls_folder_by_id <folder_id>"
+            else:
+                gdfuncs.print_files_in_folder(drive_service, input_args[1])
+                t_start = time.time()
+
+        if input_args[0] == 'ls_folder':
+            if len(input_args) == 1:
+                print "Wrong arguments:"
+                print "example: ls_folder \"<folder_name>\""
+            else:
+                folder_name = ' '.join(input_args[1:]).strip("\"")
+                gdfuncs.print_files_in_folder_by_name(drive_service, folder_name)
+                t_start = time.time()
+
 #        if input_args[0] == 'reload':
 #        if input_args[0] == 'reload':
         if input_args[0] == 'reload':
