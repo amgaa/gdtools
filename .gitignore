@@ -1,6 +1,5 @@
-auth_file.txt
-client_secrets.json
-credentials
+#client_secrets.json
+#credentials
 *.dat
 *~
 *.pyc
