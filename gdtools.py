@@ -61,13 +61,14 @@ def main(args):
             gdfuncs.show_all( gdfuncs.retrieve_all_files(drive_service) )
             t_start = time.time()
 
+        
 
         if input_args[0] == 'show_perms_by_id':
             if len(input_args) == 2:
                 gdfuncs.show_perms_by_id(drive_service, input_args[1])
                 t_start = time.time()
             else:
-                print "Wrong argument: " + ' '.join(args)
+                print "Wrong argument: " + ' '.join(args).strip()
 
 
         if input_args[0] == 'show_perms':
@@ -75,7 +76,7 @@ def main(args):
                 print "Wrong arguments:"
                 print "example: perms \"<file_name>\""
             else:
-                filename = ' '.join(input_args[1:]).strip("\"")
+                filename = ' '.join(input_args[1:]).strip().strip("\"").strip()
                 gdfuncs.show_perms(drive_service, filename)
                 t_start = time.time()
 
@@ -83,22 +84,31 @@ def main(args):
         if input_args[0] == 'give_perm_by_id':
             if len(input_args) == 5:
                 gdfuncs.insert_permission(drive_service, 
-                                          input_args[1], 
-                                          input_args[2], 
-                                          input_args[3], 
-                                          input_args[4])
+                                          input_args[1].strip(), 
+                                          input_args[2].strip(), 
+                                          input_args[3].strip(), 
+                                          input_args[4].strip())
                 t_start = time.time()
             else:
                 print "Wrong argument: " + ' '.join(args)
-                print "example: give_perm <file_id> <value> <type> <role>"
-                print "value: email address of user or group. If the type is 'anyone', please write 'None'"
-                print "type: one of 'user', 'group', or 'anyone'"
-                print "role: one of 'owner', 'writer', or 'reader' "                
+                print "example: give_perm_by_id <file_id> <email> <user|group> <owner|writer|reader>"
+
+        if input_args[0] == 'give_perm_by_id_recursive':
+            if len(input_args) == 5:
+                gdfuncs.insert_permission(drive_service, 
+                                          input_args[1].strip(), 
+                                          input_args[2].strip(), 
+                                          input_args[3].strip(), 
+                                          input_args[4].strip())
+                t_start = time.time()
+            else:
+                print "Wrong argument: " + ' '.join(args)
+                print "example: give_perm_by_id_recursive <folder_id> <email> <user|group> <owner|writer|reader>"
 
 
         if input_args[0] == 'give_perm':
             if len(input_args) >= 5:
-                filename = ' '.join(input_args[1:-3]).strip("\"")
+                filename = ' '.join(input_args[1:-3]).strip().strip("\"").strip()
                 gdfuncs.give_perm(drive_service, 
                                   filename, 
                                   input_args[-3], 
@@ -129,27 +139,53 @@ def main(args):
                 t_start = time.time()
 
 
-        if input_args[0] == 'remove_perm_by_id':
+        if input_args[0] == 'remove_perm_by_perm_id':
             if not len(input_args) == 3:
                 print "Wrong arguments:"
-                print "example: remove_perm_by_ids <file_id> <permission_id>"
+                print "example: remove_perm_by_id <file_id> <permission_id>"
             else:
                 gdfuncs.remove_permission(drive_service, 
-                                          input_args[1], 
-                                          input_args[2])
+                                          input_args[1].strip(), 
+                                          input_args[2].strip())
                 t_start = time.time()
+
         
-        if input_args[0] == 'remove_perm':
-            args = ' '.join(input_args[1:])
-            names = re.findall(r'\"(.+?)\"',args)
-            if not len(names) == 2:
-#            if not len(input_args) == 3:
+#        if input_args[0] == 'remove_perm':
+#            args = ' '.join(input_args[1:])
+#            names = re.findall(r'\"(.+?)\"',args)
+#            if not len(names) == 2:
+#                print "Wrong arguments:" + args
+#                print "example: remove_perm \"<filename>\" \"<user_name>\""
+#            else:
+#                gdfuncs.remove_permission_beta(drive_service, 
+#                                          names[0], 
+#                                          names[1])
+#                t_start = time.time()
+
+        if input_args[0] == 'remove_perm_by_username':
+            if  len(input_args) < 3:
                 print "Wrong arguments:" + args
-                print "example: remove_perm \"<filename>\" \"<user_name>\""
+                print "example: remove_perm <file/folder_id> \"<user_name>\""
             else:
-                gdfuncs.remove_permission_beta(drive_service, 
-                                          names[0], 
-                                          names[1])
+                file_id = input_args[1].strip().strip("\"").strip()
+                user_name = ' '.join(input_args[2:]).strip().strip("\"").strip()
+                print "1 user name: " + user_name
+                print "args: " + str(input_args)
+                gdfuncs.remove_permission_gamma(drive_service, 
+                                          file_id, 
+                                          user_name)
+                t_start = time.time()
+
+        if input_args[0] == 'remove_perm_by_username_recursive':
+            if  len(input_args) < 3:
+                print "Wrong arguments:"
+                print "example: remove_perm_by_username_recursive <folder_id> <username>"
+            else:
+                folder_id = input_args[1].strip().strip("\"").strip()
+                user_name = ' '.join(input_args[2:]).strip().strip("\"").strip()
+                gdfuncs.remove_permission_recursive(drive_service, 
+                                                    folder_id, 
+                                                    user_name)
                 t_start = time.time()
                 
         
@@ -158,7 +194,7 @@ def main(args):
                 print "Wrong arguments:"
                 print "example: show_ids \"<file_name>\""
             else:
-                filename = ' '.join(input_args[1:])
+                filename = ' '.join(input_args[1:]).strip().strip("\"").strip()
                 gdfuncs.print_file_ids_for_filename(drive_service, filename)
                 t_start = time.time()
                
@@ -175,12 +211,39 @@ def main(args):
                 print "Wrong arguments:"
                 print "example: ls_folder \"<folder_name>\""
             else:
-                folder_name = ' '.join(input_args[1:]).strip("\"")
+                folder_name = ' '.join(input_args[1:]).strip().strip("\"").strip()
                 gdfuncs.print_files_in_folder_by_name(drive_service, folder_name)
                 t_start = time.time()
 
-#        if input_args[0] == 'reload':
-#        if input_args[0] == 'reload':
+        if input_args[0] == 'ls_folder_by_id_recursive':
+            if not len(input_args) == 2:
+                print "Wrong arguments:"
+                print "example: ls_folder_by_id_recursive <folder_id>"
+            else:
+                gdfuncs.print_all_childs_in_folder(drive_service, input_args[1])
+                t_start = time.time()
+
+        if input_args[0] == 'ls_folder_by_name_recursive':
+            if  len(input_args) == 1:
+                print "Wrong arguments:"
+                print "example: ls_folder_by_name_recursive <folder_name>"
+            else:
+                folder_name = ' '.join(input_args[1:]).strip().strip("\"").strip()
+                gdfuncs.print_files_in_folder_by_name_recursive(drive_service, folder_name)
+                t_start = time.time()
+
+        if input_args[0] == 'ls_all_children_ids':
+            if not len(input_args) == 2:
+                print "Wrong arguments:"
+                print "example: ls_all_children_ids <folder_id>"
+            else:
+                childs = list()
+                childs = gdfuncs.get_all_childs_in_folder(drive_service, input_args[1])
+                for child in childs:
+                    print child
+                t_start = time.time()
+                
+        # Reload gdfuncs module
         if input_args[0] == 'reload':
             reload(gdfuncs)
         if input_args[0] == 'exit':

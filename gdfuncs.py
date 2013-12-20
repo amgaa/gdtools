@@ -226,6 +226,28 @@ def print_permission_id_for_email(service, email):
     except errors.HttpError, error:
         print 'An error occured: %s' % error
 
+def insert_permission_recursive(service, folder_id, value, perm_type, role):
+    """Insert a new permission to a folder and everything inside it.
+    
+    Args:
+    service: Drive API service instance.
+    folder_id: ID of the folder to insert permissions recursively.
+    value: User or group e-mail address, domain name or None for 'default'
+    type.
+    perm_type: The value 'user', 'group', 'domain' or 'default'.
+    role: The value 'owner', 'writer' or 'reader'.
+    Returns:
+    The inserted permission if successful, None otherwise.
+    """
+    child_ids = list()
+    child_ids.append(folder_id)
+    try:
+        child_ids += get_all_childs_in_folder(service, folder_id)
+        for child_id in child_ids:
+            insert_permission(service, child_id, value, perm_type, role)
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
+
 
 def insert_permission(service, file_id, value, perm_type, role):
     """Insert a new permission.
@@ -252,6 +274,9 @@ def insert_permission(service, file_id, value, perm_type, role):
         print 'An error occurred: %s' % error
     return None
 
+
+
+
 def remove_permission(service, file_id, permission_id):
     """Remove a permission.
 
@@ -265,6 +290,37 @@ def remove_permission(service, file_id, permission_id):
             fileId=file_id, permissionId=permission_id).execute()
     except errors.HttpError, error:
         print 'An error occurred: %s' % error
+def remove_permission_alpha(service, file_id, user_name):
+    """Remove a user's permission from a file 
+
+    Args:
+    service: Drive API service instance.
+    file_ide: Uniwue ID of the file or folder
+    User name: Name of the user to remove from permissions.
+    """
+    try:
+        perm_ids = list()
+        # Look for permission ID
+        permissions = service.permissions().list(fileId=file_ids[0]).execute()
+        permissions = permissions.get('items', [])
+        for perm in permissions:
+            if perm.has_key("name"):
+                if perm["name"] == user_name:
+                    perm_ids.append(perm["id"])
+        
+        if len(perm_ids) > 1:
+            print "There are mutiple users named: " + user_name
+            print "Cannot change permission. Please use \" remove_perm_by_ids\" instead"
+            return
+        if len(perm_ids) == 0:
+            print "There is no user named " + user_name + " has permission in this file."
+            print "Please check your file and user name. "
+            return
+        return remove_permission(service, file_id, perm_ids[0])
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
+
+
     
 def remove_permission_beta(service, filename, user_name):
     """Remove a user's permission from a file with unique name.
@@ -310,6 +366,56 @@ def remove_permission_beta(service, filename, user_name):
         print 'An error occurred: %s' % error
     
 
+def remove_permission_gamma(service, file_id, user_name):
+    """Remove a user's permission from a file with unique name.
+
+    Args:
+    service: Drive API service instance.
+    file_id: ID of the file to remove the permission for.
+    User name: Name of the user to remove from permissions.
+    """
+    print "User name: " + user_name
+    try:
+        perm_ids = list()
+        # Look for permission ID
+        permissions = service.permissions().list(fileId=file_id).execute()
+        permissions = permissions.get('items', [])
+        for perm in permissions:
+            if perm.has_key("name"):
+                if perm["name"] == user_name:
+                    perm_ids.append(perm["id"])
+        
+        if len(perm_ids) > 1:
+            print "There are mutiple users named: " + user_name
+            print "Cannot change permission. Please use \" remove_perm_by_ids\" instead"
+            return
+        if len(perm_ids) == 0:
+            print "There is no user named " + user_name + " has permission in this file."
+            print "Please check your file and user name. "
+            return
+        return remove_permission(service, file_id, perm_ids[0])
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
+
+def remove_permission_recursive(service, folder_id, user_name):
+    """Remove a user's permission from a file with unique name.
+
+    Args:
+    service: Drive API service instance.
+    folder_id: ID of the folder to remove the permission for.
+    User name: Name of the user to remove from permissions.
+    """
+    child_ids = list()
+    child_ids.append(folder_id) # Add folder itself
+    child_ids += get_all_childs_in_folder(service, folder_id)
+    try:
+        for child_id in child_ids:
+            remove_permission_gamma(service, child_id, user_name)
+
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
+
+
 def give_perm(service, filename, value, perm_type, role):
     """Insert a new permission.
     
@@ -338,8 +444,6 @@ def give_perm(service, filename, value, perm_type, role):
         print 'An error occured: %s' % error
     return None
 
-#def give_folder_perm_by_id(service, folder_id, value, perm_type, role):
-#def give_folder_perm(service, folder_name, value, perm_type, role):
 
 
 def print_files_in_folder(service, folder_id):
@@ -368,6 +472,46 @@ def print_files_in_folder(service, folder_id):
         except errors.HttpError, error:
             print 'An error occurred: %s' % error
             break
+
+def get_all_childs_in_folder(service, folder_id):
+    """ Returns all files and folders inside a give folder. Recurisvely
+    """
+    page_token = None
+    children = list()
+    ids = list()
+    while True:
+        try:
+            param = {}
+            if page_token:
+                param['pageToken'] = page_token
+            children = service.children().list(
+                folderId=folder_id, **param).execute()
+
+            for child in children.get('items', []):
+#                print 'File Id: %s' % child['id']
+#                show_file(service.files().get(fileId=child['id']).execute())
+#                children += get_all_childs_in_folder(service, child['id'])
+                ids.append(child["id"])
+                ids += get_all_childs_in_folder(service, child['id'])
+            page_token = children.get('nextPageToken')
+            if not page_token:
+                break
+        except errors.HttpError, error:
+            print 'An error occurred: %s' % error
+            break
+    return ids
+
+def print_all_childs_in_folder(service, folder_id):
+    childs = list()
+    childs = get_all_childs_in_folder(service, folder_id)
+    try:
+        for child in childs:
+            #        print child['id']
+            show_file(service.files().get(fileId=child).execute())
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
+
+
 
 def print_files_in_folder_by_name(service, folder_name):
     """Print files belonging to a folder.
@@ -412,6 +556,34 @@ def print_files_in_folder_by_name(service, folder_name):
         except errors.HttpError, error:
             print 'An error occurred: %s' % error
             break
+
+
+def print_files_in_folder_by_name_recursive(service, folder_name):
+    """Print files belonging to a folder.
+
+    Args:
+    service: Drive API service instance.
+    folder_name: name of the folder to print files from.
+    """
+
+    try:
+        folder_ids = list()
+        folder_ids = get_file_ids_for_filename(service, folder_name)
+        if  len(folder_ids) > 1:
+            print "There are multiple files and folders named: " + folder_name
+            print "Cannot show lists. Please use unique folder name."
+            return
+        if len(folder_ids) == 0:
+            print "We could not find folder named: " + folder_name
+            print "Please check your folder name"
+            return
+        childs = list()
+        childs = get_all_childs_in_folder(service, folder_ids[0])
+        for child in childs:
+            show_file(service.files().get(fileId=child).execute())
+
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
 
 
 
@@ -461,6 +633,18 @@ def show_commands():
     print "           : Lists files and folders in folder of given ID"
     print ""
 
+    print "ls_all_children_ids <folder ID>"
+    print "           : Lists IDs of files and folders in folder of given ID. Recursive!"
+    print ""
+
+    print "ls_folder_by_id_recursive <folder ID>"
+    print "           : Lists titles of files and folders in folder of given ID. Recursive!"
+    print ""
+
+    print "ls_folder_by_name_recursive <folder name>"
+    print "           : Lists titles of files and folders in folder of given title. Recursive!"
+    print ""
+
     print "show_ids \"<file/folder name>\""
     print "           : Shows the ID of given file/folder name. If mutiple file exists"
     print "           : returns multiple IDs"
@@ -479,15 +663,23 @@ def show_commands():
     print "           : Gives given user a permission to file/folder. Takes file/folder name as argument"
     print ""
 
-    print "give_perm_by_id <file/folder ID> <email> <user|group|anyone> <owner|writer|reader>"
+    print "give_perm_by_id <file/folder ID> <email> <user|group> <owner|writer|reader>"
     print "           : Gives given user a permission to file/folder. Takes file/folder ID as argument."
     print ""
 
-    print "remove_perm \"<file/folder name>\" \"<user name>\""
+    print "give_perm_by_id_recursive <folder ID> <email> <user|group> <owner|writer|reader>"
+    print "           : Gives given user a permission to folder and everything inside it. Takes folder ID as argument."
+    print ""
+
+    print "remove_perm_by_username \"<file/folder ID>\" \"<user_name>\""
     print "           : Removes given user's permission from file. Takes file/folder name as argument."
     print ""
 
-    print "remove_perm_by_id <file/folder ID> <permission ID>"
+    print "remove_perm_by_username_recursive \"<file/folder ID>\" \"<user_name>\""
+    print "           : Removes given user's permission from file. Takes file/folder name as argument."
+    print ""
+
+    print "remove_perm_by_perm_id <file/folder ID> <permission ID>"
     print "           : Removes given user's permission from file. Takes file/folder ID and permission ID as argument."
     print ""
 
